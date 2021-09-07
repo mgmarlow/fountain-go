@@ -18,13 +18,9 @@ const (
 	TCharacter
 	TParenthetical
 	TLyric
-	TItalics
-	TUnderline
-	TBold
 	TTransition
 	TCenteredAction
 	TPagebreak
-	// TODO:
 	TBoneyardOpen
 	TBoneyardEnd
 	TNoteOpen
@@ -43,17 +39,18 @@ var printmap = [...]string{
 	"Character",
 	"Parenthetical",
 	"Lyric",
-	"Italics",
-	"Underline",
-	"Bold",
 	"Transition",
 	"Centered Action",
 	"Pagebreak",
-	"Boneyard",
-	"Note",
-	"Section1",
-	"Section2",
-	"Section3",
+	"Boneyard Open",
+	"Boneyard End",
+	"Note Open",
+	"Note End",
+	"Underscore",
+	"Asterisk",
+	"Section 1",
+	"Section 2",
+	"Section 3",
 }
 
 func (t T) String() string {
@@ -107,13 +104,18 @@ func (l *lexer) step() {
 }
 
 func (l *lexer) peek() rune {
-	cp, _ := utf8.DecodeRuneInString(l.input[l.current+1:])
-	return cp
+	l.step()
+	r := l.cp
+	l.backup()
+	return r
 }
 
 func (l *lexer) backup() {
 	l.current -= l.w
-	l.end = l.current
+	cp, w := utf8.DecodeRuneInString(l.input[l.current:])
+	l.end = l.current - l.w
+	l.cp = cp
+	l.w = w
 }
 
 func (l *lexer) Next() {
@@ -129,6 +131,53 @@ func (l *lexer) Next() {
 			l.step()
 			continue
 
+		// Italics
+		case '_':
+			l.step()
+			l.token = TUnderscore
+			l.value = ""
+
+		// Boneyard/underline/bold
+		case '*':
+			l.step()
+
+			if l.cp == '/' {
+				l.step()
+				l.token = TBoneyardEnd
+				l.value = ""
+				break
+			}
+
+			l.token = TAsterisk
+			l.value = ""
+
+		// Boneyard
+		case '/':
+			if l.peek() == '*' {
+				l.step()
+				l.step()
+				l.token = TBoneyardOpen
+				l.value = ""
+			}
+
+		// Note
+		case '[':
+			if l.peek() == '[' {
+				l.step()
+				l.step()
+				l.token = TNoteOpen
+				l.value = ""
+			}
+
+		case ']':
+			if l.peek() == ']' {
+				l.step()
+				l.step()
+				l.token = TNoteEnd
+				l.value = ""
+			}
+
+		// Pagebreak
 		case '=':
 			l.step()
 			numEquals := 1
@@ -151,6 +200,7 @@ func (l *lexer) Next() {
 				panic("unterminated pagebreak")
 			}
 
+		// Center/transition
 		case '>':
 			l.step()
 
@@ -174,6 +224,7 @@ func (l *lexer) Next() {
 			// Extra spaces are normally preserved, but not for centered elements
 			l.value = strings.TrimSpace(text)
 
+		// Lyric
 		case '~':
 			l.step()
 
@@ -195,6 +246,7 @@ func (l *lexer) Next() {
 			l.token = TLyric
 			l.value = text
 
+		// Parenthetical
 		case '(':
 			l.step()
 
@@ -216,32 +268,62 @@ func (l *lexer) Next() {
 			l.token = TParenthetical
 			l.value = text
 
-		// TODO: Need to break this up to handle notes, italics, etc.
 		default:
 			l.step()
 
-			for l.cp != '\n' && l.cp != eof {
+		text:
+			for {
+				switch l.cp {
+				case '\n', eof:
+					break text
+
+				case '_', '*', '~':
+					break text
+
+				case '[':
+					// Note found
+					if l.peek() == '[' {
+						break text
+					}
+
+				case ']':
+					// Note found
+					if l.peek() == ']' {
+						break text
+					}
+
+				case '/':
+					// Boneyard found
+					if l.peek() == '*' {
+						break text
+					}
+				}
+
 				l.step()
 			}
 
 			contents := l.raw()
 
+			// Heading/Transition/Character
 			if isUpper(contents) {
-				if validSceneHeading(contents) {
-					l.token = THeading
-					l.value = contents
-					break
-				}
-
+				// Ends in TO:
 				if x := strings.Index(contents, "TO:"); x == len(contents)-3 {
 					l.token = TTransition
 					l.value = contents
 					break
 				}
 
-				l.token = TCharacter
-				l.value = contents
-				break
+				if validSceneHeading(contents) {
+					l.token = THeading
+					l.value = contents
+					break
+				}
+
+				if isAlphaNumeric(contents) {
+					l.token = TCharacter
+					l.value = contents
+					break
+				}
 			}
 
 			l.token = TText
@@ -253,13 +335,18 @@ func (l *lexer) Next() {
 }
 
 func validSceneHeading(contents string) bool {
+	if !isUpper(contents) {
+		return false
+	}
+
 	for _, heading := range sceneheadings {
 		if x := strings.Index(contents, heading); x == 0 {
 			return true
 		}
 	}
 
-	if x := strings.Index(contents, "."); x == 0 {
+	// Length check to avoid "." false positives
+	if x := strings.Index(contents, "."); x == 0 && len(contents) > 1 {
 		return true
 	}
 
@@ -280,8 +367,15 @@ func (l *lexer) raw() string {
 	return l.input[l.start:l.end]
 }
 
-func isAlphaNumeric(r rune) bool {
-	return unicode.IsLetter(r) || unicode.IsDigit(r)
+func isAlphaNumeric(s string) bool {
+	for _, r := range s {
+		alphanumeric := unicode.IsLetter(r) || unicode.IsDigit(r)
+		if !alphanumeric && r != ' ' {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (l *lexer) String() string {
