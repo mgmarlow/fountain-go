@@ -135,7 +135,7 @@ func (l *lexer) Next() {
 		case '_':
 			l.step()
 			l.token = TUnderscore
-			l.value = ""
+			l.value = "_"
 
 		// Boneyard/underline/bold
 		case '*':
@@ -144,12 +144,12 @@ func (l *lexer) Next() {
 			if l.cp == '/' {
 				l.step()
 				l.token = TBoneyardEnd
-				l.value = ""
+				l.value = "*/"
 				break
 			}
 
 			l.token = TAsterisk
-			l.value = ""
+			l.value = "*"
 
 		// Boneyard
 		case '/':
@@ -157,7 +157,7 @@ func (l *lexer) Next() {
 				l.step()
 				l.step()
 				l.token = TBoneyardOpen
-				l.value = ""
+				l.value = "/*"
 			}
 
 		// Note
@@ -166,7 +166,7 @@ func (l *lexer) Next() {
 				l.step()
 				l.step()
 				l.token = TNoteOpen
-				l.value = ""
+				l.value = "[["
 			}
 
 		case ']':
@@ -174,7 +174,7 @@ func (l *lexer) Next() {
 				l.step()
 				l.step()
 				l.token = TNoteEnd
-				l.value = ""
+				l.value = "]]"
 			}
 
 		// Pagebreak
@@ -379,5 +379,5 @@ func isAlphaNumeric(s string) bool {
 }
 
 func (l *lexer) String() string {
-	return fmt.Sprintf("%v: %s\n", l.token, l.value)
+	return fmt.Sprintf("%v: %s", l.token, l.value)
 }
