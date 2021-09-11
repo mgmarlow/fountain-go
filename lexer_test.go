@@ -202,11 +202,14 @@ func TestAction(t *testing.T) {
 	}
 }
 
+// TODO: Whitespace doesn't currently follow the fountain
+// spec. Will revisit later.
+// https://fountain.io/syntax#section-action
 func TestActionWithTabs(t *testing.T) {
 	fixture := "\tsome action"
 	got := runTest(fixture)
 	expected := []string{
-		"Text:     some action",
+		"Text: some action",
 	}
 
 	if !reflect.DeepEqual(got, expected) {
@@ -214,13 +217,11 @@ func TestActionWithTabs(t *testing.T) {
 	}
 }
 
-// TODO: This doesn't follow the spec.
-// https://fountain.io/syntax#section-action
 func TestActionWithWhitespace(t *testing.T) {
 	fixture := "   some action   "
 	got := runTest(fixture)
 	expected := []string{
-		"Text:    some action   ",
+		"Text: some action",
 	}
 
 	if !reflect.DeepEqual(got, expected) {
@@ -321,6 +322,36 @@ func TestBoneyard(t *testing.T) {
 		"Boneyard Open: /*",
 		"Text: some action",
 		"Boneyard End: */",
+	}
+
+	if !reflect.DeepEqual(got, expected) {
+		t.Errorf("expected %v but got %v", expected, got)
+	}
+}
+
+func TestBoneyardNoSpaces(t *testing.T) {
+	fixture := "/*some action*/"
+	got := runTest(fixture)
+	expected := []string{
+		"Boneyard Open: /*",
+		"Text: some action",
+		"Boneyard End: */",
+	}
+
+	if !reflect.DeepEqual(got, expected) {
+		t.Errorf("expected %v but got %v", expected, got)
+	}
+}
+
+func TestBoneyardWithinText(t *testing.T) {
+	fixture := "Some more action /* some action */ more stuff"
+	got := runTest(fixture)
+	expected := []string{
+		"Text: Some more action",
+		"Boneyard Open: /*",
+		"Text: some action",
+		"Boneyard End: */",
+		"Text: more stuff",
 	}
 
 	if !reflect.DeepEqual(got, expected) {

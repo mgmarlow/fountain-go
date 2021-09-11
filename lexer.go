@@ -302,7 +302,9 @@ func (l *lexer) Next() {
 				l.step()
 			}
 
-			contents := l.raw()
+			// Trim whitespace for simplicity, but may want to leave intact
+			// in the future.
+			contents := strings.TrimSpace(l.raw())
 
 			// Heading/Transition/Character
 			if isUpper(contents) {
