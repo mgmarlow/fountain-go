@@ -104,18 +104,20 @@ func (l *lexer) step() {
 }
 
 func (l *lexer) peek() rune {
+	pw := l.w
+	pcp := l.cp
+	pend := l.end
+	pcurrent := l.current
+
 	l.step()
 	r := l.cp
-	l.backup()
-	return r
-}
 
-func (l *lexer) backup() {
-	l.current -= l.w
-	cp, w := utf8.DecodeRuneInString(l.input[l.current:])
-	l.end = l.current - l.w
-	l.cp = cp
-	l.w = w
+	l.w = pw
+	l.cp = pcp
+	l.end = pend
+	l.current = pcurrent
+
+	return r
 }
 
 func (l *lexer) Next() {
@@ -153,8 +155,8 @@ func (l *lexer) Next() {
 
 		// Boneyard
 		case '/':
-			if l.peek() == '*' {
-				l.step()
+			l.step()
+			if l.cp == '*' {
 				l.step()
 				l.token = TBoneyardOpen
 				l.value = "/*"
@@ -162,16 +164,16 @@ func (l *lexer) Next() {
 
 		// Note
 		case '[':
-			if l.peek() == '[' {
-				l.step()
+			l.step()
+			if l.cp == '[' {
 				l.step()
 				l.token = TNoteOpen
 				l.value = "[["
 			}
 
 		case ']':
-			if l.peek() == ']' {
-				l.step()
+			l.step()
+			if l.cp == ']' {
 				l.step()
 				l.token = TNoteEnd
 				l.value = "]]"
@@ -285,21 +287,25 @@ func (l *lexer) Next() {
 					if l.peek() == '[' {
 						break text
 					}
+					l.step()
 
 				case ']':
 					// Note found
 					if l.peek() == ']' {
 						break text
 					}
+					l.step()
 
 				case '/':
 					// Boneyard found
 					if l.peek() == '*' {
 						break text
 					}
-				}
+					l.step()
 
-				l.step()
+				default:
+					l.step()
+				}
 			}
 
 			// Trim whitespace for simplicity, but may want to leave intact

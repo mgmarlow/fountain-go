@@ -229,6 +229,18 @@ func TestActionWithWhitespace(t *testing.T) {
 	}
 }
 
+func TestActionWithSpecialCharacters(t *testing.T) {
+	fixture := "some action/other stuff"
+	got := runTest(fixture)
+	expected := []string{
+		"Text: some action/other stuff",
+	}
+
+	if !reflect.DeepEqual(got, expected) {
+		t.Errorf("expected %v but got %v", expected, got)
+	}
+}
+
 func TestUnderline(t *testing.T) {
 	fixture := "_some action_"
 	got := runTest(fixture)
@@ -382,6 +394,22 @@ func TestNotes(t *testing.T) {
 		"Note Open: [[",
 		"Text: some action",
 		"Note End: ]]",
+	}
+
+	if !reflect.DeepEqual(got, expected) {
+		t.Errorf("expected %v but got %v", expected, got)
+	}
+}
+
+func TestNotesWithinText(t *testing.T) {
+	fixture := "Some more action [[ some action ]] some other action"
+	got := runTest(fixture)
+	expected := []string{
+		"Text: Some more action",
+		"Note Open: [[",
+		"Text: some action",
+		"Note End: ]]",
+		"Text: some other action",
 	}
 
 	if !reflect.DeepEqual(got, expected) {

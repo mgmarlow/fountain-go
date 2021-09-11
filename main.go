@@ -14,7 +14,7 @@ func main() {
 	fileContents := string(file)
 	l := NewLexer(fileContents)
 	for l.token != TEndOfFile {
-		fmt.Printf("%s\n", l)
+		fmt.Println(l)
 		l.Next()
 	}
 }
