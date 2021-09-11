@@ -57,17 +57,13 @@ func (t T) String() string {
 	return printmap[t]
 }
 
-var sceneheadings = [10]string{
+var sceneheadings = [6]string{
 	"INT ",
 	"EXT ",
+	"EST ",
 	"INT.",
 	"EXT.",
-	"EST ",
 	"EST.",
-	"INT./EXT.",
-	"INT/EXT ",
-	"I/E ",
-	"I/E.",
 }
 
 type lexer struct {
@@ -137,7 +133,7 @@ func (l *lexer) Next() {
 		case '_':
 			l.step()
 			l.token = TUnderscore
-			l.value = "_"
+			l.value = l.raw()
 
 		// Boneyard/underline/bold
 		case '*':
@@ -146,7 +142,7 @@ func (l *lexer) Next() {
 			if l.cp == '/' {
 				l.step()
 				l.token = TBoneyardEnd
-				l.value = "*/"
+				l.value = l.raw()
 				break
 			}
 
@@ -159,7 +155,7 @@ func (l *lexer) Next() {
 			if l.cp == '*' {
 				l.step()
 				l.token = TBoneyardOpen
-				l.value = "/*"
+				l.value = l.raw()
 			}
 
 		// Note
@@ -168,7 +164,7 @@ func (l *lexer) Next() {
 			if l.cp == '[' {
 				l.step()
 				l.token = TNoteOpen
-				l.value = "[["
+				l.value = l.raw()
 			}
 
 		case ']':
@@ -176,7 +172,7 @@ func (l *lexer) Next() {
 			if l.cp == ']' {
 				l.step()
 				l.token = TNoteEnd
-				l.value = "]]"
+				l.value = l.raw()
 			}
 
 		// Pagebreak
