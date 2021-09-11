@@ -1,4 +1,4 @@
-package main
+package lexer
 
 import (
 	"reflect"
@@ -9,7 +9,7 @@ func runTest(contents string) []string {
 	result := []string{}
 
 	l := NewLexer(contents)
-	for l.token != TEndOfFile {
+	for l.Token != TEndOfFile {
 		result = append(result, l.String())
 		l.Next()
 	}

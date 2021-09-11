@@ -1,4 +1,4 @@
-package main
+package lexer
 
 import (
 	"fmt"
@@ -67,6 +67,7 @@ var sceneheadings = [6]string{
 }
 
 type lexer struct {
+	Token   T
 	input   string
 	current int
 	start   int
@@ -74,7 +75,6 @@ type lexer struct {
 	w       int
 	value   string
 	cp      rune
-	token   T
 }
 
 func NewLexer(input string) *lexer {
@@ -119,11 +119,11 @@ func (l *lexer) peek() rune {
 func (l *lexer) Next() {
 	for {
 		l.start = l.end
-		l.token = 0
+		l.Token = 0
 
 		switch l.cp {
 		case eof:
-			l.token = TEndOfFile
+			l.Token = TEndOfFile
 
 		case '\n', '\t', ' ':
 			l.step()
@@ -132,7 +132,7 @@ func (l *lexer) Next() {
 		// Italics
 		case '_':
 			l.step()
-			l.token = TUnderscore
+			l.Token = TUnderscore
 			l.value = l.raw()
 
 		// Boneyard/underline/bold
@@ -141,12 +141,12 @@ func (l *lexer) Next() {
 
 			if l.cp == '/' {
 				l.step()
-				l.token = TBoneyardEnd
+				l.Token = TBoneyardEnd
 				l.value = l.raw()
 				break
 			}
 
-			l.token = TAsterisk
+			l.Token = TAsterisk
 			l.value = "*"
 
 		// Boneyard
@@ -154,7 +154,7 @@ func (l *lexer) Next() {
 			l.step()
 			if l.cp == '*' {
 				l.step()
-				l.token = TBoneyardOpen
+				l.Token = TBoneyardOpen
 				l.value = l.raw()
 			}
 
@@ -163,7 +163,7 @@ func (l *lexer) Next() {
 			l.step()
 			if l.cp == '[' {
 				l.step()
-				l.token = TNoteOpen
+				l.Token = TNoteOpen
 				l.value = l.raw()
 			}
 
@@ -171,7 +171,7 @@ func (l *lexer) Next() {
 			l.step()
 			if l.cp == ']' {
 				l.step()
-				l.token = TNoteEnd
+				l.Token = TNoteEnd
 				l.value = l.raw()
 			}
 
@@ -192,7 +192,7 @@ func (l *lexer) Next() {
 			}
 
 			if numEquals >= 3 {
-				l.token = TPagebreak
+				l.Token = TPagebreak
 				l.value = l.raw()
 			} else {
 				panic("unterminated pagebreak")
@@ -207,11 +207,11 @@ func (l *lexer) Next() {
 				switch l.cp {
 				case '<':
 					l.step()
-					l.token = TCenteredAction
+					l.Token = TCenteredAction
 					break center_or_transition
 
 				case '\n', eof:
-					l.token = TTransition
+					l.Token = TTransition
 					break center_or_transition
 				}
 
@@ -241,7 +241,7 @@ func (l *lexer) Next() {
 			}
 
 			text := l.input[l.start+1 : l.end-1]
-			l.token = TLyric
+			l.Token = TLyric
 			l.value = text
 
 		// Parenthetical
@@ -263,7 +263,7 @@ func (l *lexer) Next() {
 			}
 
 			text := l.raw()
-			l.token = TParenthetical
+			l.Token = TParenthetical
 			l.value = text
 
 		default:
@@ -312,25 +312,25 @@ func (l *lexer) Next() {
 			if isUpper(contents) {
 				// Ends in TO:
 				if x := strings.Index(contents, "TO:"); x == len(contents)-3 {
-					l.token = TTransition
+					l.Token = TTransition
 					l.value = contents
 					break
 				}
 
 				if validSceneHeading(contents) {
-					l.token = THeading
+					l.Token = THeading
 					l.value = contents
 					break
 				}
 
 				if isAlphaNumeric(contents) {
-					l.token = TCharacter
+					l.Token = TCharacter
 					l.value = contents
 					break
 				}
 			}
 
-			l.token = TText
+			l.Token = TText
 			l.value = contents
 		}
 
@@ -383,5 +383,5 @@ func isAlphaNumeric(s string) bool {
 }
 
 func (l *lexer) String() string {
-	return fmt.Sprintf("%v: %s", l.token, l.value)
+	return fmt.Sprintf("%v: %s", l.Token, l.value)
 }

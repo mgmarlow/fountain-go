@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+
+	"github.com/mgmarlow/fountain/lexer"
 )
 
 func main() {
@@ -12,8 +14,8 @@ func main() {
 	}
 
 	fileContents := string(file)
-	l := NewLexer(fileContents)
-	for l.token != TEndOfFile {
+	l := lexer.NewLexer(fileContents)
+	for l.Token != lexer.TEndOfFile {
 		fmt.Println(l)
 		l.Next()
 	}
