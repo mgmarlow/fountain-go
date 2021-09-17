@@ -2,8 +2,6 @@ package lexer
 
 import (
 	"fmt"
-	"strings"
-	"unicode"
 	"unicode/utf8"
 )
 
@@ -13,59 +11,43 @@ const eof = -1
 
 const (
 	TEndOfFile T = iota
-	THeading
 	TText
-	TCharacter
-	TParenthetical
-	TLyric
-	TTransition
-	TCenteredAction
-	TPagebreak
+	TEquals
 	TBoneyardOpen
-	TBoneyardEnd
-	TNoteOpen
-	TNoteEnd
+	TBoneyardClose
 	TUnderscore
 	TAsterisk
-	TSection1
-	TSection2
-	TSection3
+	TParenOpen
+	TParenClose
+	TNoteOpen
+	TNoteClose
+	TCaretOpen
+	TCaretClose
+	TTilde
 )
 
 var printmap = [...]string{
-	"EOF",
-	"Heading",
-	"Text",
-	"Character",
-	"Parenthetical",
-	"Lyric",
-	"Transition",
-	"Centered Action",
-	"Pagebreak",
-	"Boneyard Open",
-	"Boneyard End",
-	"Note Open",
-	"Note End",
-	"Underscore",
-	"Asterisk",
-	"Section 1",
-	"Section 2",
-	"Section 3",
+	"eof",
+	"text",
+	"equals",
+	"boneyard_open",
+	"boneyard_end",
+	"underscore",
+	"asterisk",
+	"paren_open",
+	"paren_close",
+	"note_open",
+	"note_close",
+	"caret_open",
+	"caret_close",
+	"tilde",
 }
 
 func (t T) String() string {
 	return printmap[t]
 }
 
-var sceneheadings = [6]string{
-	"INT ",
-	"EXT ",
-	"EST ",
-	"INT.",
-	"EXT.",
-	"EST.",
-}
-
+// TODO: Collect newline and column.
 type lexer struct {
 	Token   T
 	input   string
@@ -84,6 +66,135 @@ func NewLexer(input string) *lexer {
 	l.step()
 	l.Next()
 	return l
+}
+
+func (l *lexer) Next() {
+	for {
+		l.start = l.end
+		l.Token = 0
+
+		switch l.cp {
+		case eof:
+			l.Token = TEndOfFile
+
+		case '\n', '\t':
+			l.step()
+			continue
+
+		case '_':
+			l.step()
+			l.Token = TUnderscore
+			l.value = ""
+
+		case '*':
+			l.step()
+
+			if l.cp == '/' {
+				l.step()
+				l.Token = TBoneyardClose
+				l.value = ""
+				break
+			}
+
+			l.Token = TAsterisk
+			l.value = ""
+
+		case '/':
+			l.step()
+			if l.cp == '*' {
+				l.step()
+				l.Token = TBoneyardOpen
+				l.value = ""
+			}
+
+		case '[':
+			l.step()
+			if l.cp == '[' {
+				l.step()
+				l.Token = TNoteOpen
+				l.value = ""
+			}
+
+		case ']':
+			l.step()
+			if l.cp == ']' {
+				l.step()
+				l.Token = TNoteClose
+				l.value = ""
+			}
+
+		case '=':
+			l.step()
+			l.Token = TEquals
+			l.value = ""
+
+		case '<':
+			l.step()
+			l.Token = TCaretOpen
+			l.value = ""
+
+		case '>':
+			l.step()
+			l.Token = TCaretClose
+			l.value = ""
+
+		case '~':
+			l.step()
+			l.Token = TTilde
+			l.value = ""
+
+		case '(':
+			l.step()
+			l.Token = TParenOpen
+			l.value = ""
+
+		case ')':
+			l.step()
+			l.Token = TParenClose
+			l.value = ""
+
+		default:
+			l.step()
+
+		text:
+			for {
+				switch l.cp {
+				case '\n', eof, '_', '*', '~', '<', '>', '(', ')':
+					break text
+
+				case '[':
+					// Note found
+					if l.peek() == '[' {
+						break text
+					}
+					l.step()
+
+				case ']':
+					// Note found
+					if l.peek() == ']' {
+						break text
+					}
+					l.step()
+
+				case '/':
+					// Boneyard found
+					if l.peek() == '*' {
+						break text
+					}
+					l.step()
+
+				default:
+					l.step()
+				}
+			}
+
+			contents := l.raw()
+			l.Token = TText
+			l.value = contents
+		}
+
+		return
+	}
 }
 
 func (l *lexer) step() {
@@ -116,272 +227,15 @@ func (l *lexer) peek() rune {
 	return r
 }
 
-func (l *lexer) Next() {
-	for {
-		l.start = l.end
-		l.Token = 0
-
-		switch l.cp {
-		case eof:
-			l.Token = TEndOfFile
-
-		case '\n', '\t', ' ':
-			l.step()
-			continue
-
-		// Italics
-		case '_':
-			l.step()
-			l.Token = TUnderscore
-			l.value = l.raw()
-
-		// Boneyard/underline/bold
-		case '*':
-			l.step()
-
-			if l.cp == '/' {
-				l.step()
-				l.Token = TBoneyardEnd
-				l.value = l.raw()
-				break
-			}
-
-			l.Token = TAsterisk
-			l.value = "*"
-
-		// Boneyard
-		case '/':
-			l.step()
-			if l.cp == '*' {
-				l.step()
-				l.Token = TBoneyardOpen
-				l.value = l.raw()
-			}
-
-		// Note
-		case '[':
-			l.step()
-			if l.cp == '[' {
-				l.step()
-				l.Token = TNoteOpen
-				l.value = l.raw()
-			}
-
-		case ']':
-			l.step()
-			if l.cp == ']' {
-				l.step()
-				l.Token = TNoteEnd
-				l.value = l.raw()
-			}
-
-		// Pagebreak
-		case '=':
-			l.step()
-			numEquals := 1
-
-		pagebreak:
-			for {
-				switch l.cp {
-				case '=':
-					numEquals++
-				default:
-					break pagebreak
-				}
-				l.step()
-			}
-
-			if numEquals >= 3 {
-				l.Token = TPagebreak
-				l.value = l.raw()
-			} else {
-				panic("unterminated pagebreak")
-			}
-
-		// Center/transition
-		case '>':
-			l.step()
-
-		center_or_transition:
-			for {
-				switch l.cp {
-				case '<':
-					l.step()
-					l.Token = TCenteredAction
-					break center_or_transition
-
-				case '\n', eof:
-					l.Token = TTransition
-					break center_or_transition
-				}
-
-				l.step()
-			}
-
-			text := l.input[l.start+1 : l.end-1]
-			// Extra spaces are normally preserved, but not for centered elements
-			l.value = strings.TrimSpace(text)
-
-		// Lyric
-		case '~':
-			l.step()
-
-		lyric:
-			for {
-				switch l.cp {
-				case '~':
-					l.step()
-					break lyric
-
-				case '\n', eof:
-					panic("unterminated lyric")
-				}
-
-				l.step()
-			}
-
-			text := l.input[l.start+1 : l.end-1]
-			l.Token = TLyric
-			l.value = text
-
-		// Parenthetical
-		case '(':
-			l.step()
-
-		parenthetical:
-			for {
-				switch l.cp {
-				case ')':
-					l.step()
-					break parenthetical
-
-				case '\n', eof:
-					panic("unterminated parenthetical")
-				}
-
-				l.step()
-			}
-
-			text := l.raw()
-			l.Token = TParenthetical
-			l.value = text
-
-		default:
-			l.step()
-
-		text:
-			for {
-				switch l.cp {
-				case '\n', eof:
-					break text
-
-				case '_', '*', '~':
-					break text
-
-				case '[':
-					// Note found
-					if l.peek() == '[' {
-						break text
-					}
-					l.step()
-
-				case ']':
-					// Note found
-					if l.peek() == ']' {
-						break text
-					}
-					l.step()
-
-				case '/':
-					// Boneyard found
-					if l.peek() == '*' {
-						break text
-					}
-					l.step()
-
-				default:
-					l.step()
-				}
-			}
-
-			// Trim whitespace for simplicity, but may want to leave intact
-			// in the future.
-			contents := strings.TrimSpace(l.raw())
-
-			// Heading/Transition/Character
-			if isUpper(contents) {
-				// Ends in TO:
-				if x := strings.Index(contents, "TO:"); x == len(contents)-3 {
-					l.Token = TTransition
-					l.value = contents
-					break
-				}
-
-				if validSceneHeading(contents) {
-					l.Token = THeading
-					l.value = contents
-					break
-				}
-
-				if isAlphaNumeric(contents) {
-					l.Token = TCharacter
-					l.value = contents
-					break
-				}
-			}
-
-			l.Token = TText
-			l.value = contents
-		}
-
-		return
-	}
-}
-
-func validSceneHeading(contents string) bool {
-	if !isUpper(contents) {
-		return false
-	}
-
-	for _, heading := range sceneheadings {
-		if x := strings.Index(contents, heading); x == 0 {
-			return true
-		}
-	}
-
-	// Length check to avoid "." false positives
-	if x := strings.Index(contents, "."); x == 0 && len(contents) > 1 {
-		return true
-	}
-
-	return false
-}
-
-func isUpper(s string) bool {
-	for _, r := range s {
-		if !unicode.IsUpper(r) && unicode.IsLetter(r) {
-			return false
-		}
-	}
-
-	return true
-}
-
 func (l *lexer) raw() string {
 	return l.input[l.start:l.end]
 }
 
-func isAlphaNumeric(s string) bool {
-	for _, r := range s {
-		alphanumeric := unicode.IsLetter(r) || unicode.IsDigit(r)
-		if !alphanumeric && r != ' ' {
-			return false
-		}
+func (l *lexer) String() string {
+	var val string
+	if l.value != "" {
+		val = fmt.Sprintf(" value=\"%s\"", l.value)
 	}
 
-	return true
-}
-
-func (l *lexer) String() string {
-	return fmt.Sprintf("%v: %s", l.Token, l.value)
+	return fmt.Sprintf("<%v%s>", l.Token, val)
 }
