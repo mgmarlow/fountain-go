@@ -128,12 +128,12 @@ func (l *lexer) Next() {
 			l.Token = TEquals
 			l.value = ""
 
-		case '>':
+		case '<':
 			l.step()
 			l.Token = TCaretOpen
 			l.value = ""
 
-		case '<':
+		case '>':
 			l.step()
 			l.Token = TCaretClose
 			l.value = ""
