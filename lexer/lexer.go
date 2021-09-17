@@ -68,36 +68,6 @@ func NewLexer(input string) *lexer {
 	return l
 }
 
-func (l *lexer) step() {
-	cp, w := utf8.DecodeRuneInString(l.input[l.current:])
-
-	if w == 0 {
-		cp = eof
-	}
-
-	l.w = w
-	l.cp = cp
-	l.end = l.current
-	l.current += w
-}
-
-func (l *lexer) peek() rune {
-	pw := l.w
-	pcp := l.cp
-	pend := l.end
-	pcurrent := l.current
-
-	l.step()
-	r := l.cp
-
-	l.w = pw
-	l.cp = pcp
-	l.end = pend
-	l.current = pcurrent
-
-	return r
-}
-
 func (l *lexer) Next() {
 	for {
 		l.start = l.end
@@ -227,11 +197,40 @@ func (l *lexer) Next() {
 	}
 }
 
+func (l *lexer) step() {
+	cp, w := utf8.DecodeRuneInString(l.input[l.current:])
+
+	if w == 0 {
+		cp = eof
+	}
+
+	l.w = w
+	l.cp = cp
+	l.end = l.current
+	l.current += w
+}
+
+func (l *lexer) peek() rune {
+	pw := l.w
+	pcp := l.cp
+	pend := l.end
+	pcurrent := l.current
+
+	l.step()
+	r := l.cp
+
+	l.w = pw
+	l.cp = pcp
+	l.end = pend
+	l.current = pcurrent
+
+	return r
+}
+
 func (l *lexer) raw() string {
 	return l.input[l.start:l.end]
 }
 
-// TODO: Format as such: <TToken value="...">
 func (l *lexer) String() string {
 	var val string
 	if l.value != "" {
