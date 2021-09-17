@@ -2,7 +2,6 @@ package lexer
 
 import (
 	"fmt"
-	"strings"
 	"unicode/utf8"
 )
 
@@ -12,44 +11,36 @@ const eof = -1
 
 const (
 	TEndOfFile T = iota
-	THeading
 	TText
-	TCharacter
-	TParenthetical
-	TLyric
-	TTransition
-	TCenteredAction
-	TPagebreak
+	TEquals
 	TBoneyardOpen
-	TBoneyardEnd
-	TNoteOpen
-	TNoteEnd
+	TBoneyardClose
 	TUnderscore
 	TAsterisk
-	TSection1
-	TSection2
-	TSection3
+	TParenOpen
+	TParenClose
+	TNoteOpen
+	TNoteClose
+	TCaretOpen
+	TCaretClose
+	TTilde
 )
 
 var printmap = [...]string{
-	"EOF",
-	"Heading",
-	"Text",
-	"Character",
-	"Parenthetical",
-	"Lyric",
-	"Transition",
-	"Centered Action",
-	"Pagebreak",
-	"Boneyard Open",
-	"Boneyard End",
-	"Note Open",
-	"Note End",
-	"Underscore",
-	"Asterisk",
-	"Section 1",
-	"Section 2",
-	"Section 3",
+	"eof",
+	"text",
+	"equals",
+	"boneyard_open",
+	"boneyard_end",
+	"underscore",
+	"asterisk",
+	"paren_open",
+	"paren_close",
+	"note_open",
+	"note_close",
+	"caret_open",
+	"caret_close",
+	"tilde",
 }
 
 func (t T) String() string {
@@ -116,146 +107,81 @@ func (l *lexer) Next() {
 		case eof:
 			l.Token = TEndOfFile
 
-		case '\n', '\t', ' ':
+		case '\n', '\t':
 			l.step()
 			continue
 
-		// Italics
 		case '_':
 			l.step()
 			l.Token = TUnderscore
-			l.value = l.raw()
+			l.value = ""
 
-		// Boneyard/underline/bold
 		case '*':
 			l.step()
 
 			if l.cp == '/' {
 				l.step()
-				l.Token = TBoneyardEnd
-				l.value = l.raw()
+				l.Token = TBoneyardClose
+				l.value = ""
 				break
 			}
 
 			l.Token = TAsterisk
-			l.value = "*"
+			l.value = ""
 
-		// Boneyard
 		case '/':
 			l.step()
 			if l.cp == '*' {
 				l.step()
 				l.Token = TBoneyardOpen
-				l.value = l.raw()
+				l.value = ""
 			}
 
-		// Note
 		case '[':
 			l.step()
 			if l.cp == '[' {
 				l.step()
 				l.Token = TNoteOpen
-				l.value = l.raw()
+				l.value = ""
 			}
 
 		case ']':
 			l.step()
 			if l.cp == ']' {
 				l.step()
-				l.Token = TNoteEnd
-				l.value = l.raw()
+				l.Token = TNoteClose
+				l.value = ""
 			}
 
-		// Pagebreak
 		case '=':
 			l.step()
-			numEquals := 1
+			l.Token = TEquals
+			l.value = ""
 
-		pagebreak:
-			for {
-				switch l.cp {
-				case '=':
-					numEquals++
-				default:
-					break pagebreak
-				}
-				l.step()
-			}
-
-			if numEquals >= 3 {
-				l.Token = TPagebreak
-				l.value = l.raw()
-			} else {
-				panic("unterminated pagebreak")
-			}
-
-		// Center/transition
 		case '>':
 			l.step()
+			l.Token = TCaretOpen
+			l.value = ""
 
-		center_or_transition:
-			for {
-				switch l.cp {
-				case '<':
-					l.step()
-					l.Token = TCenteredAction
-					break center_or_transition
+		case '<':
+			l.step()
+			l.Token = TCaretClose
+			l.value = ""
 
-				case '\n', eof:
-					l.Token = TTransition
-					break center_or_transition
-				}
-
-				l.step()
-			}
-
-			text := l.input[l.start+1 : l.end-1]
-			// Extra spaces are normally preserved, but not for centered elements
-			l.value = strings.TrimSpace(text)
-
-		// Lyric
 		case '~':
 			l.step()
+			l.Token = TTilde
+			l.value = ""
 
-		lyric:
-			for {
-				switch l.cp {
-				case '~':
-					l.step()
-					break lyric
-
-				case '\n', eof:
-					panic("unterminated lyric")
-				}
-
-				l.step()
-			}
-
-			text := l.input[l.start+1 : l.end-1]
-			l.Token = TLyric
-			l.value = text
-
-		// Parenthetical
 		case '(':
 			l.step()
+			l.Token = TParenOpen
+			l.value = ""
 
-		parenthetical:
-			for {
-				switch l.cp {
-				case ')':
-					l.step()
-					break parenthetical
-
-				case '\n', eof:
-					panic("unterminated parenthetical")
-				}
-
-				l.step()
-			}
-
-			text := l.raw()
-			l.Token = TParenthetical
-			l.value = text
+		case ')':
+			l.step()
+			l.Token = TParenClose
+			l.value = ""
 
 		default:
 			l.step()
@@ -263,10 +189,7 @@ func (l *lexer) Next() {
 		text:
 			for {
 				switch l.cp {
-				case '\n', eof:
-					break text
-
-				case '_', '*', '~':
+				case '\n', eof, '_', '*', '~', '<', '>', '(', ')':
 					break text
 
 				case '[':
@@ -310,5 +233,10 @@ func (l *lexer) raw() string {
 
 // TODO: Format as such: <TToken value="...">
 func (l *lexer) String() string {
-	return fmt.Sprintf("%v: %s", l.Token, l.value)
+	var val string
+	if l.value != "" {
+		val = fmt.Sprintf(" value=\"%s\"", l.value)
+	}
+
+	return fmt.Sprintf("<%v%s>", l.Token, val)
 }
