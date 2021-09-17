@@ -47,9 +47,9 @@ func (t T) String() string {
 	return printmap[t]
 }
 
-// TODO: Collect newline and column.
 type lexer struct {
 	Token   T
+	Line    uint
 	input   string
 	current int
 	start   int
@@ -77,7 +77,12 @@ func (l *lexer) Next() {
 		case eof:
 			l.Token = TEndOfFile
 
-		case '\n', '\t':
+		case '\n':
+			l.step()
+			l.Line++
+			continue
+
+		case '\t':
 			l.step()
 			continue
 
