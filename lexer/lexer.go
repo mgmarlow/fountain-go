@@ -3,7 +3,6 @@ package lexer
 import (
 	"fmt"
 	"strings"
-	"unicode"
 	"unicode/utf8"
 )
 
@@ -57,15 +56,7 @@ func (t T) String() string {
 	return printmap[t]
 }
 
-var sceneheadings = [6]string{
-	"INT ",
-	"EXT ",
-	"EST ",
-	"INT.",
-	"EXT.",
-	"EST.",
-}
-
+// TODO: Collect newline and column.
 type lexer struct {
 	Token   T
 	input   string
@@ -304,32 +295,7 @@ func (l *lexer) Next() {
 				}
 			}
 
-			// Trim whitespace for simplicity, but may want to leave intact
-			// in the future.
-			contents := strings.TrimSpace(l.raw())
-
-			// Heading/Transition/Character
-			if isUpper(contents) {
-				// Ends in TO:
-				if x := strings.Index(contents, "TO:"); x == len(contents)-3 {
-					l.Token = TTransition
-					l.value = contents
-					break
-				}
-
-				if validSceneHeading(contents) {
-					l.Token = THeading
-					l.value = contents
-					break
-				}
-
-				if isAlphaNumeric(contents) {
-					l.Token = TCharacter
-					l.value = contents
-					break
-				}
-			}
-
+			contents := l.raw()
 			l.Token = TText
 			l.value = contents
 		}
@@ -338,50 +304,11 @@ func (l *lexer) Next() {
 	}
 }
 
-func validSceneHeading(contents string) bool {
-	if !isUpper(contents) {
-		return false
-	}
-
-	for _, heading := range sceneheadings {
-		if x := strings.Index(contents, heading); x == 0 {
-			return true
-		}
-	}
-
-	// Length check to avoid "." false positives
-	if x := strings.Index(contents, "."); x == 0 && len(contents) > 1 {
-		return true
-	}
-
-	return false
-}
-
-func isUpper(s string) bool {
-	for _, r := range s {
-		if !unicode.IsUpper(r) && unicode.IsLetter(r) {
-			return false
-		}
-	}
-
-	return true
-}
-
 func (l *lexer) raw() string {
 	return l.input[l.start:l.end]
 }
 
-func isAlphaNumeric(s string) bool {
-	for _, r := range s {
-		alphanumeric := unicode.IsLetter(r) || unicode.IsDigit(r)
-		if !alphanumeric && r != ' ' {
-			return false
-		}
-	}
-
-	return true
-}
-
+// TODO: Format as such: <TToken value="...">
 func (l *lexer) String() string {
 	return fmt.Sprintf("%v: %s", l.Token, l.value)
 }
