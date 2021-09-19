@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 
-	"github.com/mgmarlow/fountain/lexer"
+	"github.com/mgmarlow/fountain/emitters"
+	"github.com/mgmarlow/fountain/parser"
 )
 
 func main() {
@@ -14,9 +14,7 @@ func main() {
 	}
 
 	fileContents := string(file)
-	l := lexer.NewLexer(fileContents)
-	for l.Token != lexer.TEndOfFile {
-		fmt.Println(l.Line, l)
-		l.Next()
-	}
+	p := parser.NewParser(fileContents)
+	j := p.Emit(emitters.NewJsonEmitter())
+	_ = ioutil.WriteFile("test.json", j, 0644)
 }

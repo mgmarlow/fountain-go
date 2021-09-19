@@ -53,20 +53,20 @@ func (t T) String() string {
 	return printmap[t]
 }
 
-type lexer struct {
+type Lexer struct {
 	Token   T
 	Line    uint
+	Value   string
 	input   string
 	current int
 	start   int
 	end     int
 	w       int
-	value   string
 	cp      rune
 }
 
-func NewLexer(input string) *lexer {
-	l := &lexer{
+func NewLexer(input string) *Lexer {
+	l := &Lexer{
 		input: input,
 	}
 	l.step()
@@ -74,7 +74,7 @@ func NewLexer(input string) *lexer {
 	return l
 }
 
-func (l *lexer) Next() {
+func (l *Lexer) Next() {
 	for {
 		l.start = l.end
 		l.Token = 0
@@ -102,7 +102,7 @@ func (l *lexer) Next() {
 		case '_':
 			l.step()
 			l.Token = TUnderscore
-			l.value = ""
+			l.Value = ""
 
 		case '*':
 			l.step()
@@ -110,19 +110,19 @@ func (l *lexer) Next() {
 			if l.cp == '/' {
 				l.step()
 				l.Token = TBoneyardClose
-				l.value = ""
+				l.Value = ""
 				break
 			}
 
 			l.Token = TAsterisk
-			l.value = ""
+			l.Value = ""
 
 		case '/':
 			l.step()
 			if l.cp == '*' {
 				l.step()
 				l.Token = TBoneyardOpen
-				l.value = ""
+				l.Value = ""
 			}
 
 		case '[':
@@ -130,7 +130,7 @@ func (l *lexer) Next() {
 			if l.cp == '[' {
 				l.step()
 				l.Token = TNoteOpen
-				l.value = ""
+				l.Value = ""
 			}
 
 		case ']':
@@ -138,28 +138,28 @@ func (l *lexer) Next() {
 			if l.cp == ']' {
 				l.step()
 				l.Token = TNoteClose
-				l.value = ""
+				l.Value = ""
 			}
 
 		case '=':
 			l.step()
 			l.Token = TEquals
-			l.value = ""
+			l.Value = ""
 
 		case '~':
 			l.step()
 			l.Token = TTilde
-			l.value = ""
+			l.Value = ""
 
 		case '(':
 			l.step()
 			l.Token = TParenOpen
-			l.value = ""
+			l.Value = ""
 
 		case ')':
 			l.step()
 			l.Token = TParenClose
-			l.value = ""
+			l.Value = ""
 
 		default:
 			l.step()
@@ -203,54 +203,54 @@ func (l *lexer) Next() {
 			if isUpper(contents) {
 				if beginsWith(contents, "EXT.") {
 					l.Token = TSlugline
-					l.value = contents
+					l.Value = contents
 					return
 				}
 
 				if beginsWith(contents, "INT.") {
 					l.Token = TSlugline
-					l.value = contents
+					l.Value = contents
 					return
 				}
 
 				if beginsWith(contents, ".") {
 					l.Token = TSlugline
-					l.value = contents
+					l.Value = contents
 					return
 				}
 
 				if beginsWith(contents, ">") && endsWith(contents, "<") {
 					l.Token = TCenteredText
-					l.value = contents
+					l.Value = contents
 					return
 				}
 
 				if beginsWith(contents, ">") {
 					l.Token = TTransition
-					l.value = contents
+					l.Value = contents
 					return
 				}
 
 				if endsWith(contents, "TO:") {
 					l.Token = TTransition
-					l.value = contents
+					l.Value = contents
 					return
 				}
 
 				l.Token = TDialogue
-				l.value = contents
+				l.Value = contents
 				return
 			}
 
 			l.Token = TText
-			l.value = contents
+			l.Value = contents
 		}
 
 		return
 	}
 }
 
-func (l *lexer) step() {
+func (l *Lexer) step() {
 	cp, w := utf8.DecodeRuneInString(l.input[l.current:])
 
 	if w == 0 {
@@ -263,7 +263,7 @@ func (l *lexer) step() {
 	l.current += w
 }
 
-func (l *lexer) peek() rune {
+func (l *Lexer) peek() rune {
 	pw := l.w
 	pcp := l.cp
 	pend := l.end
@@ -280,14 +280,14 @@ func (l *lexer) peek() rune {
 	return r
 }
 
-func (l *lexer) raw() string {
+func (l *Lexer) raw() string {
 	return l.input[l.start:l.end]
 }
 
-func (l *lexer) String() string {
+func (l *Lexer) String() string {
 	var val string
-	if l.value != "" {
-		val = fmt.Sprintf(" value=\"%s\"", l.value)
+	if l.Value != "" {
+		val = fmt.Sprintf(" value=\"%s\"", l.Value)
 	}
 
 	return fmt.Sprintf("<%v%s>", l.Token, val)
