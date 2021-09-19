@@ -2,6 +2,8 @@ package lexer
 
 import (
 	"fmt"
+	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -21,9 +23,11 @@ const (
 	TParenClose
 	TNoteOpen
 	TNoteClose
-	TCaretOpen
-	TCaretClose
 	TTilde
+	TSlugline
+	TDialogue
+	TTransition
+	TCenteredText
 )
 
 var printmap = [...]string{
@@ -38,9 +42,11 @@ var printmap = [...]string{
 	"paren_close",
 	"note_open",
 	"note_close",
-	"caret_open",
-	"caret_close",
 	"tilde",
+	"slugline",
+	"dialogue",
+	"transition",
+	"centered_text",
 }
 
 func (t T) String() string {
@@ -140,16 +146,6 @@ func (l *lexer) Next() {
 			l.Token = TEquals
 			l.value = ""
 
-		case '<':
-			l.step()
-			l.Token = TCaretOpen
-			l.value = ""
-
-		case '>':
-			l.step()
-			l.Token = TCaretClose
-			l.value = ""
-
 		case '~':
 			l.step()
 			l.Token = TTilde
@@ -171,7 +167,7 @@ func (l *lexer) Next() {
 		text:
 			for {
 				switch l.cp {
-				case '\n', '\r', eof, '_', '*', '~', '<', '>', '(', ')':
+				case '\n', '\r', eof, '_', '*', '~', '(', ')':
 					break text
 
 				case '[':
@@ -201,6 +197,51 @@ func (l *lexer) Next() {
 			}
 
 			contents := l.raw()
+
+			// These matches are line-based. Handling in the lexer for now,
+			// but may be better job for the parser.
+			if isUpper(contents) {
+				if beginsWith(contents, "EXT.") {
+					l.Token = TSlugline
+					l.value = contents
+					return
+				}
+
+				if beginsWith(contents, "INT.") {
+					l.Token = TSlugline
+					l.value = contents
+					return
+				}
+
+				if beginsWith(contents, ".") {
+					l.Token = TSlugline
+					l.value = contents
+					return
+				}
+
+				if beginsWith(contents, ">") && endsWith(contents, "<") {
+					l.Token = TCenteredText
+					l.value = contents
+					return
+				}
+
+				if beginsWith(contents, ">") {
+					l.Token = TTransition
+					l.value = contents
+					return
+				}
+
+				if endsWith(contents, "TO:") {
+					l.Token = TTransition
+					l.value = contents
+					return
+				}
+
+				l.Token = TDialogue
+				l.value = contents
+				return
+			}
+
 			l.Token = TText
 			l.value = contents
 		}
@@ -250,4 +291,22 @@ func (l *lexer) String() string {
 	}
 
 	return fmt.Sprintf("<%v%s>", l.Token, val)
+}
+
+func isUpper(s string) bool {
+	for _, r := range s {
+		if !unicode.IsUpper(r) && unicode.IsLetter(r) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func beginsWith(contents, s string) bool {
+	return strings.Index(contents, s) == 0
+}
+
+func endsWith(contents, s string) bool {
+	return strings.Index(contents, s) == len(contents)-len(s)
 }
