@@ -77,6 +77,13 @@ func (l *lexer) Next() {
 		case eof:
 			l.Token = TEndOfFile
 
+		// \r\n for Windows
+		case '\r':
+			l.step()
+			l.step()
+			l.Line++
+			continue
+
 		case '\n':
 			l.step()
 			l.Line++
@@ -164,7 +171,7 @@ func (l *lexer) Next() {
 		text:
 			for {
 				switch l.cp {
-				case '\n', eof, '_', '*', '~', '<', '>', '(', ')':
+				case '\n', '\r', eof, '_', '*', '~', '<', '>', '(', ')':
 					break text
 
 				case '[':
