@@ -11,14 +11,27 @@ type Component interface{}
 type Composite struct {
 	ElementType string
 	Children    []Component
-	Value       string
 }
 
-func NewComposite(el, v string) Composite {
+func NewComposite(el string) Composite {
 	return Composite{
 		ElementType: el,
 		Children:    []Component{},
-		Value:       v,
+	}
+}
+
+type Dialogue struct {
+	Composite
+	Character string
+}
+
+func NewDialogue(el, c string) Dialogue {
+	return Dialogue{
+		Composite: Composite{
+			ElementType: el,
+			Children:    []Component{},
+		},
+		Character: c,
 	}
 }
 
@@ -45,12 +58,16 @@ func getElementType(t lexer.T) string {
 
 type Parser struct {
 	Root Composite
+	l    *lexer.Lexer
 }
 
 func NewParser(contents string) *Parser {
-	return &Parser{
-		Root: parse(contents),
+	parser := &Parser{
+		Root: NewComposite("root"),
+		l:    lexer.NewLexer(contents),
 	}
+	parser.parse()
+	return parser
 }
 
 type Emitter interface {
@@ -61,36 +78,32 @@ func (p *Parser) Emit(emitter Emitter) []byte {
 	return emitter.Emit(p.Root)
 }
 
-func parse(contents string) Composite {
-	root := NewComposite("root", "")
-
-	l := lexer.NewLexer(contents)
-	for l.Token != lexer.TEndOfFile {
+func (p *Parser) parse() {
+	for p.l.Token != lexer.TEndOfFile {
 		var node Component
 
-		switch l.Token {
+		switch p.l.Token {
 		case lexer.TDialogue:
-			node = assembleDialogue(l)
+			node = p.assembleDialogue()
 		default:
-			node = NewLeaf(getElementType(l.Token), l.Value)
+			// Unimplemented, should default to text
+			node = NewLeaf(getElementType(p.l.Token), p.l.Value)
 		}
 
-		root.add(node)
-		l.Next()
+		p.Root.add(node)
+		p.l.Next()
 	}
-
-	return root
 }
 
-func assembleDialogue(l *lexer.Lexer) Composite {
-	node := NewComposite("dialogue", l.Value)
+func (p *Parser) assembleDialogue() Dialogue {
+	node := NewDialogue("dialogue", p.l.Value)
 
 	for {
-		l.Next()
+		p.l.Next()
 
-		switch l.Token {
+		switch p.l.Token {
 		case lexer.TText, lexer.TAsterisk, lexer.TUnderscore, lexer.TParenOpen, lexer.TParenClose:
-			node.add(NewLeaf(getElementType(l.Token), l.Value))
+			node.add(NewLeaf("text", p.l.Value))
 		default:
 			return node
 		}
