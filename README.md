@@ -1,3 +1,15 @@
 # ftnbuild
 
-[Fountain](https://fountain.io) processor.
+(WIP) [Fountain](https://fountain.io) processor.
+
+## Installation
+
+```
+todo
+```
+
+## Usage
+
+```
+todo
+```
