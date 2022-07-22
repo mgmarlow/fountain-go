@@ -1,3 +1,3 @@
-module github.com/mgmarlow/fountain
+module github.com/mgmarlow/fountain-go
 
-go 1.17
+go 1.18
