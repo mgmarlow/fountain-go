@@ -82,6 +82,22 @@ func (l *Lexer) BuildTokens() []Token {
 			})
 			continue
 
+		case '^':
+			l.next()
+			tokens = append(tokens, Token{
+				kind:  "caret",
+				value: "^",
+			})
+			continue
+
+		case '~':
+			l.next()
+			tokens = append(tokens, Token{
+				kind:  "tilde",
+				value: "~",
+			})
+			continue
+
 		case 'E', 'I', '.':
 			if l.matches("EXT.") || l.matches("INT.") || l.peek() != '.' {
 				value := l.collect()
@@ -172,7 +188,7 @@ func isEOF(r rune) bool {
 }
 
 func isText(r rune) bool {
-	reservedChars := []rune{'(', ')', '@'}
+	reservedChars := []rune{'(', ')', '@', '^', '~'}
 
 	return unicode.IsLetter(r) ||
 		unicode.IsNumber(r) ||

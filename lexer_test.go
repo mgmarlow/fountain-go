@@ -99,3 +99,34 @@ func TestParens(t *testing.T) {
 	got := Tokenize(input)
 	testTokenMatch(t, got, want)
 }
+
+func TestDualDialogue(t *testing.T) {
+	input := `BRICK
+Screw retirement.
+
+STEEL ^
+Screw retirement.`
+	want := []Token{
+		{"character", "BRICK"},
+		{"newline", ""},
+		{"text", "Screw retirement."},
+		{"newline", ""},
+		{"newline", ""},
+		{"character", "STEEL"},
+		{"caret", "^"},
+		{"newline", ""},
+		{"text", "Screw retirement."},
+	}
+	got := Tokenize(input)
+	testTokenMatch(t, got, want)
+}
+
+func TestLyric(t *testing.T) {
+	input := "~Willy Wonka! Willy Wonka! The amazing chocolatier!"
+	want := []Token{
+		{"tilde", "~"},
+		{"text", "Willy Wonka! Willy Wonka! The amazing chocolatier!"},
+	}
+	got := Tokenize(input)
+	testTokenMatch(t, got, want)
+}
