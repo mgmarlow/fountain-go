@@ -42,12 +42,37 @@ func TestTokenizeSceneHeading(t *testing.T) {
 		{"EXT. BRICK'S POOL - DAY", []Token{{"scene_heading", "EXT. BRICK'S POOL - DAY"}}},
 		{"INT. HOUSE - DAY", []Token{{"scene_heading", "INT. HOUSE - DAY"}}},
 		{".SNIPER SCOPE POV", []Token{{"scene_heading", ".SNIPER SCOPE POV"}}},
-		// Not interpreted as a scene heading
-		{"...foo bar", []Token{{"action", "...foo bar"}}},
 	}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("Scene Heading %s", test.input), func(t *testing.T) {
+			got := Tokenize(test.input)
+			testTokenMatch(t, got, test.wanted)
+		})
+	}
+}
+
+// Leading ellipses shouldn't be interpreted as a scene heading.
+func TestEllipsesNotSceneHeading(t *testing.T) {
+	input := "...foo bar"
+	want := []Token{{"action", "...foo bar"}}
+	got := Tokenize(input)
+	testTokenMatch(t, got, want)
+}
+
+func TestCharacter(t *testing.T) {
+	tests := []struct {
+		input  string
+		wanted []Token
+	}{
+		{"STEEL", []Token{{"character", "STEEL"}}},
+		// TODO:
+		// {"HANS (on the radio)", []Token{{"character", "HANS (on the radio)"}}},
+		{"@McCLANE", []Token{{"character", "McCLANE"}}},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("Character Dialogue %s", test.input), func(t *testing.T) {
 			got := Tokenize(test.input)
 			testTokenMatch(t, got, test.wanted)
 		})

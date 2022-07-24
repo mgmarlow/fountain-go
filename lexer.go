@@ -1,5 +1,9 @@
 package main
 
+import (
+	"unicode"
+)
+
 type Token struct {
 	kind  string
 	value string
@@ -44,40 +48,54 @@ func (l *Lexer) BuildTokens() []Token {
 			})
 			continue
 
+		case '@':
+			// Skip leading @ symbol
+			l.next()
+			value := l.collect()
+			tokens = append(tokens, Token{
+				kind:  "character",
+				value: value,
+			})
+			continue
+
 		case 'E', 'I', '.':
 			if l.matches("EXT.") || l.matches("INT.") || l.peek() != '.' {
-				value := ""
-				for l.char != '\n' {
-					value += string(l.char)
-					l.next()
-				}
-
+				value := l.collect()
 				tokens = append(tokens, Token{
 					kind:  "scene_heading",
 					value: value,
 				})
-
 				continue
 			}
 			fallthrough
 
 		default:
-			value := ""
-			for l.char != '\n' {
-				value += string(l.char)
-				l.next()
+			value := l.collect()
+			if isUpper(value) {
+				tokens = append(tokens, Token{
+					kind:  "character",
+					value: value,
+				})
+			} else {
+				tokens = append(tokens, Token{
+					kind:  "action",
+					value: value,
+				})
 			}
-
-			tokens = append(tokens, Token{
-				kind:  "action",
-				value: value,
-			})
-
 			continue
 		}
 	}
 
 	return tokens
+}
+
+func (l *Lexer) collect() string {
+	value := ""
+	for l.char != '\n' && l.char != eof {
+		value += string(l.char)
+		l.next()
+	}
+	return value
 }
 
 func (l *Lexer) next() {
@@ -97,6 +115,16 @@ func (l *Lexer) matches(expected string) bool {
 	for i, c := range expected {
 		char := []rune(l.input)[l.current+i]
 		if char != c {
+			return false
+		}
+	}
+
+	return true
+}
+
+func isUpper(s string) bool {
+	for _, c := range s {
+		if !unicode.IsUpper(c) && unicode.IsLetter(c) {
 			return false
 		}
 	}
