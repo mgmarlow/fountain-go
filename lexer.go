@@ -98,8 +98,19 @@ func (l *Lexer) BuildTokens() []Token {
 			})
 			continue
 
-		case 'E', 'I', '.':
-			if l.matches("EXT.") || l.matches("INT.") || l.peek() != '.' {
+		case '.':
+			if l.peek() != '.' {
+				value := l.collect()
+				tokens = append(tokens, Token{
+					kind:  "scene_heading",
+					value: value,
+				})
+				continue
+			}
+			fallthrough
+
+		case 'E', 'I':
+			if l.matches("EXT.") || l.matches("INT.") {
 				value := l.collect()
 				tokens = append(tokens, Token{
 					kind:  "scene_heading",
@@ -113,7 +124,7 @@ func (l *Lexer) BuildTokens() []Token {
 			value := l.collectText()
 			if isUpper(value) {
 				tokens = append(tokens, Token{
-					kind:  "character",
+					kind: "character",
 					// TODO: Should probably always trim values for tokens
 					// other than text.
 					value: strings.TrimSpace(value),
@@ -193,5 +204,6 @@ func isText(r rune) bool {
 	return unicode.IsLetter(r) ||
 		unicode.IsNumber(r) ||
 		unicode.IsSpace(r) ||
+		// TODO: Implement this manually and drop the dependency
 		!lo.Contains(reservedChars, r)
 }
