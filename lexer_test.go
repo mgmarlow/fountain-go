@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func testTokenMatch(t *testing.T, got, wanted []Token) {
+func runTokenMatch(t *testing.T, got, wanted []Token) {
 	t.Helper()
 
 	// Ending newline assumed so we don't need to repeat it in the tests.
@@ -17,6 +17,21 @@ func testTokenMatch(t *testing.T, got, wanted []Token) {
 
 	if !reflect.DeepEqual(got, wanted) {
 		t.Error("\nExpected:", wanted, "\nGot:", got)
+	}
+}
+
+type test struct {
+	input string
+	want  []Token
+}
+
+func runTestingTable(t *testing.T, tests []test, format string) {
+	t.Helper()
+	for _, test := range tests {
+		t.Run(fmt.Sprintf(format, test.input), func(t *testing.T) {
+			got := Tokenize(test.input)
+			runTokenMatch(t, got, test.want)
+		})
 	}
 }
 
@@ -31,25 +46,16 @@ And then there's a long beat.`
 		{"newline", ""},
 		{"text", "And then there's a long beat."},
 	}
-	testTokenMatch(t, got, wanted)
+	runTokenMatch(t, got, wanted)
 }
 
 func TestTokenizeSceneHeading(t *testing.T) {
-	tests := []struct {
-		input  string
-		wanted []Token
-	}{
+	tests := []test{
 		{"EXT. BRICK'S POOL - DAY", []Token{{"scene_heading", "EXT. BRICK'S POOL - DAY"}}},
 		{"INT. HOUSE - DAY", []Token{{"scene_heading", "INT. HOUSE - DAY"}}},
 		{".SNIPER SCOPE POV", []Token{{"scene_heading", ".SNIPER SCOPE POV"}}},
 	}
-
-	for _, test := range tests {
-		t.Run(fmt.Sprintf("Scene Heading %s", test.input), func(t *testing.T) {
-			got := Tokenize(test.input)
-			testTokenMatch(t, got, test.wanted)
-		})
-	}
+	runTestingTable(t, tests, "SceneHeading %s")
 }
 
 // Leading ellipses shouldn't be interpreted as a scene heading.
@@ -57,24 +63,15 @@ func TestEllipsesNotSceneHeading(t *testing.T) {
 	input := "...foo bar"
 	want := []Token{{"text", "...foo bar"}}
 	got := Tokenize(input)
-	testTokenMatch(t, got, want)
+	runTokenMatch(t, got, want)
 }
 
 func TestCharacter(t *testing.T) {
-	tests := []struct {
-		input  string
-		wanted []Token
-	}{
+	tests := []test{
 		{"STEEL", []Token{{"character", "STEEL"}}},
 		{"@McCLANE", []Token{{"character", "McCLANE"}}},
 	}
-
-	for _, test := range tests {
-		t.Run(fmt.Sprintf("Character Dialogue %s", test.input), func(t *testing.T) {
-			got := Tokenize(test.input)
-			testTokenMatch(t, got, test.wanted)
-		})
-	}
+	runTestingTable(t, tests, "CharacterDialogue %s")
 }
 
 func TestCharacterWithParenthetical(t *testing.T) {
@@ -86,7 +83,7 @@ func TestCharacterWithParenthetical(t *testing.T) {
 		{"cparen", ")"},
 	}
 	got := Tokenize(input)
-	testTokenMatch(t, got, want)
+	runTokenMatch(t, got, want)
 }
 
 func TestParens(t *testing.T) {
@@ -97,7 +94,7 @@ func TestParens(t *testing.T) {
 		{"cparen", ")"},
 	}
 	got := Tokenize(input)
-	testTokenMatch(t, got, want)
+	runTokenMatch(t, got, want)
 }
 
 func TestDualDialogue(t *testing.T) {
@@ -118,7 +115,7 @@ Screw retirement.`
 		{"text", "Screw retirement."},
 	}
 	got := Tokenize(input)
-	testTokenMatch(t, got, want)
+	runTokenMatch(t, got, want)
 }
 
 func TestLyric(t *testing.T) {
@@ -128,24 +125,16 @@ func TestLyric(t *testing.T) {
 		{"text", "Willy Wonka! Willy Wonka! The amazing chocolatier!"},
 	}
 	got := Tokenize(input)
-	testTokenMatch(t, got, want)
+	runTokenMatch(t, got, want)
 }
 
 func TestTransition(t *testing.T) {
-	tests := []struct {
-		input  string
-		wanted []Token
-	}{
+	tests := []test{
 		{"CUT TO:", []Token{{"transition", "CUT TO:"}}},
 		{"FADE TO:", []Token{{"transition", "FADE TO:"}}},
 		{"ENTER TO:", []Token{{"transition", "ENTER TO:"}}},
 		{"> Burn to white.", []Token{{"transition", "Burn to white."}}},
 	}
 
-	for _, test := range tests {
-		t.Run(fmt.Sprintf("Transition %s", test.input), func(t *testing.T) {
-			got := Tokenize(test.input)
-			testTokenMatch(t, got, test.wanted)
-		})
-	}
+	runTestingTable(t, tests, "Transition %s")
 }
