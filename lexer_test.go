@@ -187,7 +187,7 @@ func TestNesting(t *testing.T) {
 		{"asterisk", "*"},
 		{"text", "Leupold Mark 4"},
 		{"asterisk", "*"},
-		{"text", "scope"},
+		{"text", " scope"},
 		{"underscore", "_"},
 		{"text", "."},
 	}

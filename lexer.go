@@ -3,8 +3,6 @@ package main
 import (
 	"strings"
 	"unicode"
-
-	"github.com/samber/lo"
 )
 
 type Token struct {
@@ -39,13 +37,16 @@ func NewLexer(input string) *Lexer {
 func (l *Lexer) BuildTokens() []Token {
 	tokens := []Token{}
 
+	// Conditionals using l.col == 0 apply extra semantic analysis for certain
+	// newline lexemes. These lexemes have no significance when nested in text,
+	// so we only parse them when they begin at the first column.
 	for l.current < len([]rune(l.input)) {
 		switch l.char {
 		case eof:
 			l.current++
 			continue
 
-		case '\n':
+		case '\n', '\r':
 			l.next()
 			l.col = 0
 			tokens = append(tokens, Token{
@@ -54,20 +55,17 @@ func (l *Lexer) BuildTokens() []Token {
 			})
 			continue
 
-		// Beginning of line whitespace is insignificant.
-		case ' ':
-			l.next()
-			continue
-
 		case '@':
-			// Skip leading @ symbol
-			l.next()
-			value := l.collect()
-			tokens = append(tokens, Token{
-				kind:  "character",
-				value: value,
-			})
-			continue
+			if l.col == 0 {
+				// Skip leading @ symbol
+				l.next()
+				value := l.collect()
+				tokens = append(tokens, Token{
+					kind:  "character",
+					value: value,
+				})
+				continue
+			}
 
 		case '(':
 			l.next()
@@ -118,27 +116,29 @@ func (l *Lexer) BuildTokens() []Token {
 			continue
 
 		case '>':
-			// Skip leading >
-			l.next()
+			if l.col == 0 {
+				// Skip leading >
+				l.next()
 
-			value := l.collect()
+				value := l.collect()
 
-			// Might need to rethink this and just use "gt"/"lt" tokens, depending on
-			// support for italicized/underlined centered text.
-			if strings.HasSuffix(value, "<") {
+				// Might need to rethink this and just use "gt"/"lt" tokens, depending on
+				// support for italicized/underlined centered text.
+				if strings.HasSuffix(value, "<") {
+					tokens = append(tokens, Token{
+						kind: "centered_text",
+						// Sans ending '<' char
+						value: strings.TrimSpace(value[:len(value)-1]),
+					})
+					continue
+				}
+
 				tokens = append(tokens, Token{
-					kind: "centered_text",
-					// Sans ending '<' char
-					value: strings.TrimSpace(value[:len(value)-1]),
+					kind:  "transition",
+					value: strings.TrimSpace(value),
 				})
 				continue
 			}
-
-			tokens = append(tokens, Token{
-				kind:  "transition",
-				value: strings.TrimSpace(value),
-			})
-			continue
 
 		case '.':
 			if l.peek() != '.' && l.col == 0 {
@@ -149,10 +149,9 @@ func (l *Lexer) BuildTokens() []Token {
 				})
 				continue
 			}
-			fallthrough
 
 		case 'E', 'I':
-			if l.matches("EXT.") || l.matches("INT.") {
+			if (l.matches("EXT.") || l.matches("INT.")) && l.col == 0 {
 				value := l.collect()
 				tokens = append(tokens, Token{
 					kind:  "scene_heading",
@@ -160,51 +159,56 @@ func (l *Lexer) BuildTokens() []Token {
 				})
 				continue
 			}
-			fallthrough
 
-		default:
-			value := l.collectText()
-			if isUpper(value) && containsAlphanumeric(value) {
-				if strings.HasSuffix(value, "TO:") {
-					tokens = append(tokens, Token{
-						kind:  "transition",
-						value: value,
-					})
-					continue
-				}
+		}
 
+		// In all other cases, we want the lexer to fall into some text analysis.
+		// A default case is avoided, since it's difficult to manage fallthroughts.
+		//
+		// When collecting, make sure to punt the lexer back into analysis to catch
+		// specific lexemes. Otherwise, nested expressions like emphasis will not be
+		// parsed appropriately.
+		value := l.collect(func(r rune) bool { return !isNestable(r) })
+		if isUpper(value) && containsAlphanumeric(value) {
+			if strings.HasSuffix(value, "TO:") {
 				tokens = append(tokens, Token{
-					kind: "character",
-					// TODO: Should probably always trim values for tokens
-					// other than text.
-					value: strings.TrimSpace(value),
+					kind:  "transition",
+					value: value,
 				})
 				continue
 			}
 
 			tokens = append(tokens, Token{
-				kind:  "text",
-				value: value,
+				kind: "character",
+				// TODO: Should probably always trim values for tokens
+				// other than text.
+				value: strings.TrimSpace(value),
 			})
 			continue
 		}
+
+		tokens = append(tokens, Token{
+			kind:  "text",
+			value: value,
+		})
+		continue
 	}
 
 	return tokens
 }
 
-func (l *Lexer) collectText() string {
-	value := ""
-	for !isEOF(l.char) && isText(l.char) {
-		value += string(l.char)
-		l.next()
+// Use variadic args for default predicate.
+func (l *Lexer) collect(p ...func(r rune) bool) string {
+	predicate := func(_ rune) bool {
+		return true
 	}
-	return value
-}
 
-func (l *Lexer) collect() string {
+	if len(p) > 0 {
+		predicate = p[0]
+	}
+
 	value := ""
-	for !isEOF(l.char) {
+	for !isEOL(l.char) && predicate(l.char) {
 		value += string(l.char)
 		l.next()
 	}
@@ -246,18 +250,16 @@ func isUpper(s string) bool {
 	return true
 }
 
-func isEOF(r rune) bool {
-	return r == '\n' || r == eof
+func isEOL(r rune) bool {
+	return r == '\n' || r == eof || r == '\r'
 }
 
-func isText(r rune) bool {
-	reservedChars := []rune{'(', ')', '@', '^', '~', '*', '_'}
-
-	return unicode.IsLetter(r) ||
-		unicode.IsNumber(r) ||
-		unicode.IsSpace(r) ||
-		// TODO: Implement this manually and drop the dependency
-		!lo.Contains(reservedChars, r)
+// Expressions that can appear in normal text that we want to make sure get tokenized
+// into specific lexemes.
+//
+// Lexemes that check l.col == 0 cannot appear in this list.
+func isNestable(r rune) bool {
+	return r == '*' || r == '_' || r == '(' || r == ')' || r == '^'
 }
 
 // Contains any numbers or letters. Useful for excluding punctuation lexemes.
