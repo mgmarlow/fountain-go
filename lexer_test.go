@@ -20,16 +20,16 @@ func testTokenMatch(t *testing.T, got, wanted []Token) {
 	}
 }
 
-func TestActionWithNewlines(t *testing.T) {
+func TestTextWithNewlines(t *testing.T) {
 	input := `They drink long and well from the beers.
 
 And then there's a long beat.`
 	got := Tokenize(input)
 	wanted := []Token{
-		{"action", "They drink long and well from the beers."},
+		{"text", "They drink long and well from the beers."},
 		{"newline", ""},
 		{"newline", ""},
-		{"action", "And then there's a long beat."},
+		{"text", "And then there's a long beat."},
 	}
 	testTokenMatch(t, got, wanted)
 }
@@ -55,7 +55,7 @@ func TestTokenizeSceneHeading(t *testing.T) {
 // Leading ellipses shouldn't be interpreted as a scene heading.
 func TestEllipsesNotSceneHeading(t *testing.T) {
 	input := "...foo bar"
-	want := []Token{{"action", "...foo bar"}}
+	want := []Token{{"text", "...foo bar"}}
 	got := Tokenize(input)
 	testTokenMatch(t, got, want)
 }

@@ -78,7 +78,7 @@ func (l *Lexer) BuildTokens() []Token {
 				})
 			} else {
 				tokens = append(tokens, Token{
-					kind:  "action",
+					kind:  "text",
 					value: value,
 				})
 			}
