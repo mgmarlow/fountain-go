@@ -66,8 +66,6 @@ func TestCharacter(t *testing.T) {
 		wanted []Token
 	}{
 		{"STEEL", []Token{{"character", "STEEL"}}},
-		// TODO:
-		// {"HANS (on the radio)", []Token{{"character", "HANS (on the radio)"}}},
 		{"@McCLANE", []Token{{"character", "McCLANE"}}},
 	}
 
@@ -77,4 +75,27 @@ func TestCharacter(t *testing.T) {
 			testTokenMatch(t, got, test.wanted)
 		})
 	}
+}
+
+func TestCharacterWithParenthetical(t *testing.T) {
+	input := "HANS (on the radio)"
+	want := []Token{
+		{"character", "HANS"},
+		{"oparen", "("},
+		{"text", "on the radio"},
+		{"cparen", ")"},
+	}
+	got := Tokenize(input)
+	testTokenMatch(t, got, want)
+}
+
+func TestParens(t *testing.T) {
+	input := "(foo bar)"
+	want := []Token{
+		{"oparen", "("},
+		{"text", "foo bar"},
+		{"cparen", ")"},
+	}
+	got := Tokenize(input)
+	testTokenMatch(t, got, want)
 }

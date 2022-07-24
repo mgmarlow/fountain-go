@@ -1,7 +1,10 @@
 package main
 
 import (
+	"strings"
 	"unicode"
+
+	"github.com/samber/lo"
 )
 
 type Token struct {
@@ -48,6 +51,11 @@ func (l *Lexer) BuildTokens() []Token {
 			})
 			continue
 
+		// Beginning of line whitespace is insignificant.
+		case ' ':
+			l.next()
+			continue
+
 		case '@':
 			// Skip leading @ symbol
 			l.next()
@@ -55,6 +63,22 @@ func (l *Lexer) BuildTokens() []Token {
 			tokens = append(tokens, Token{
 				kind:  "character",
 				value: value,
+			})
+			continue
+
+		case '(':
+			l.next()
+			tokens = append(tokens, Token{
+				kind:  "oparen",
+				value: "(",
+			})
+			continue
+
+		case ')':
+			l.next()
+			tokens = append(tokens, Token{
+				kind:  "cparen",
+				value: ")",
 			})
 			continue
 
@@ -70,11 +94,13 @@ func (l *Lexer) BuildTokens() []Token {
 			fallthrough
 
 		default:
-			value := l.collect()
+			value := l.collectText()
 			if isUpper(value) {
 				tokens = append(tokens, Token{
 					kind:  "character",
-					value: value,
+					// TODO: Should probably always trim values for tokens
+					// other than text.
+					value: strings.TrimSpace(value),
 				})
 			} else {
 				tokens = append(tokens, Token{
@@ -89,9 +115,18 @@ func (l *Lexer) BuildTokens() []Token {
 	return tokens
 }
 
+func (l *Lexer) collectText() string {
+	value := ""
+	for !isEOF(l.char) && isText(l.char) {
+		value += string(l.char)
+		l.next()
+	}
+	return value
+}
+
 func (l *Lexer) collect() string {
 	value := ""
-	for l.char != '\n' && l.char != eof {
+	for !isEOF(l.char) {
 		value += string(l.char)
 		l.next()
 	}
@@ -130,4 +165,17 @@ func isUpper(s string) bool {
 	}
 
 	return true
+}
+
+func isEOF(r rune) bool {
+	return r == '\n' || r == eof
+}
+
+func isText(r rune) bool {
+	reservedChars := []rune{'(', ')', '@'}
+
+	return unicode.IsLetter(r) ||
+		unicode.IsNumber(r) ||
+		unicode.IsSpace(r) ||
+		!lo.Contains(reservedChars, r)
 }
