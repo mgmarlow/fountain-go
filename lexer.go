@@ -14,6 +14,7 @@ type Token struct {
 
 type Lexer struct {
 	current int
+	col     int
 	input   string
 	char    rune
 }
@@ -28,6 +29,7 @@ func Tokenize(input string) []Token {
 func NewLexer(input string) *Lexer {
 	return &Lexer{
 		current: 0,
+		col:     0,
 		// Append newline for easier end-of-string handling.
 		input: input + "\n",
 		char:  []rune(input)[0],
@@ -45,6 +47,7 @@ func (l *Lexer) BuildTokens() []Token {
 
 		case '\n':
 			l.next()
+			l.col = 0
 			tokens = append(tokens, Token{
 				kind:  "newline",
 				value: "",
@@ -98,6 +101,22 @@ func (l *Lexer) BuildTokens() []Token {
 			})
 			continue
 
+		case '*':
+			l.next()
+			tokens = append(tokens, Token{
+				kind:  "asterisk",
+				value: "*",
+			})
+			continue
+
+		case '_':
+			l.next()
+			tokens = append(tokens, Token{
+				kind:  "underscore",
+				value: "_",
+			})
+			continue
+
 		case '>':
 			// Skip leading >
 			l.next()
@@ -122,7 +141,7 @@ func (l *Lexer) BuildTokens() []Token {
 			continue
 
 		case '.':
-			if l.peek() != '.' {
+			if l.peek() != '.' && l.col == 0 {
 				value := l.collect()
 				tokens = append(tokens, Token{
 					kind:  "scene_heading",
@@ -145,7 +164,7 @@ func (l *Lexer) BuildTokens() []Token {
 
 		default:
 			value := l.collectText()
-			if isUpper(value) {
+			if isUpper(value) && containsAlphanumeric(value) {
 				if strings.HasSuffix(value, "TO:") {
 					tokens = append(tokens, Token{
 						kind:  "transition",
@@ -194,6 +213,7 @@ func (l *Lexer) collect() string {
 
 func (l *Lexer) next() {
 	l.current++
+	l.col++
 	if l.current < len([]rune(l.input)) {
 		l.char = []rune(l.input)[l.current]
 	} else {
@@ -231,11 +251,22 @@ func isEOF(r rune) bool {
 }
 
 func isText(r rune) bool {
-	reservedChars := []rune{'(', ')', '@', '^', '~'}
+	reservedChars := []rune{'(', ')', '@', '^', '~', '*', '_'}
 
 	return unicode.IsLetter(r) ||
 		unicode.IsNumber(r) ||
 		unicode.IsSpace(r) ||
 		// TODO: Implement this manually and drop the dependency
 		!lo.Contains(reservedChars, r)
+}
+
+// Contains any numbers or letters. Useful for excluding punctuation lexemes.
+func containsAlphanumeric(s string) bool {
+	count := 0
+	for _, r := range s {
+		if unicode.IsLetter(r) || unicode.IsNumber(r) {
+			count++
+		}
+	}
+	return count > 0
 }

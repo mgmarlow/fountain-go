@@ -145,3 +145,52 @@ func TestCenteredText(t *testing.T) {
 	}
 	runTestingTable(t, tests, "CenteredText %s")
 }
+
+func TestEmphasis(t *testing.T) {
+	tests := []test{
+		{"*italics*", []Token{
+			{"asterisk", "*"},
+			{"text", "italics"},
+			{"asterisk", "*"},
+		}},
+		{"**bold**", []Token{
+			{"asterisk", "*"},
+			{"asterisk", "*"},
+			{"text", "bold"},
+			{"asterisk", "*"},
+			{"asterisk", "*"},
+		}},
+		{"***bold italics***", []Token{
+			{"asterisk", "*"},
+			{"asterisk", "*"},
+			{"asterisk", "*"},
+			{"text", "bold italics"},
+			{"asterisk", "*"},
+			{"asterisk", "*"},
+			{"asterisk", "*"},
+		}},
+		{"_underline_", []Token{
+			{"underscore", "_"},
+			{"text", "underline"},
+			{"underscore", "_"},
+		}},
+	}
+	runTestingTable(t, tests, "Emphasis %s")
+}
+
+func TestNesting(t *testing.T) {
+	input := "From what seems like only INCHES AWAY. _Steel's face FILLS the *Leupold Mark 4* scope_."
+	want := []Token{
+		{"text", "From what seems like only INCHES AWAY. "},
+		{"underscore", "_"},
+		{"text", "Steel's face FILLS the "},
+		{"asterisk", "*"},
+		{"text", "Leupold Mark 4"},
+		{"asterisk", "*"},
+		{"text", "scope"},
+		{"underscore", "_"},
+		{"text", "."},
+	}
+	got := Tokenize(input)
+	runTokenMatch(t, got, want)
+}
