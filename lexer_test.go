@@ -135,6 +135,13 @@ func TestTransition(t *testing.T) {
 		{"ENTER TO:", []Token{{"transition", "ENTER TO:"}}},
 		{"> Burn to white.", []Token{{"transition", "Burn to white."}}},
 	}
-
 	runTestingTable(t, tests, "Transition %s")
+}
+
+func TestCenteredText(t *testing.T) {
+	tests := []test{
+		{">THE END<", []Token{{"centered_text", "THE END"}}},
+		{"> THE END <", []Token{{"centered_text", "THE END"}}},
+	}
+	runTestingTable(t, tests, "CenteredText %s")
 }

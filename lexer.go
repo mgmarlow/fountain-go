@@ -103,6 +103,18 @@ func (l *Lexer) BuildTokens() []Token {
 			l.next()
 
 			value := l.collect()
+
+			// Might need to rethink this and just use "gt"/"lt" tokens, depending on
+			// support for italicized/underlined centered text.
+			if strings.HasSuffix(value, "<") {
+				tokens = append(tokens, Token{
+					kind: "centered_text",
+					// Sans ending '<' char
+					value: strings.TrimSpace(value[:len(value)-1]),
+				})
+				continue
+			}
+
 			tokens = append(tokens, Token{
 				kind:  "transition",
 				value: strings.TrimSpace(value),
