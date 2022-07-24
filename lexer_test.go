@@ -130,3 +130,22 @@ func TestLyric(t *testing.T) {
 	got := Tokenize(input)
 	testTokenMatch(t, got, want)
 }
+
+func TestTransition(t *testing.T) {
+	tests := []struct {
+		input  string
+		wanted []Token
+	}{
+		{"CUT TO:", []Token{{"transition", "CUT TO:"}}},
+		{"FADE TO:", []Token{{"transition", "FADE TO:"}}},
+		{"ENTER TO:", []Token{{"transition", "ENTER TO:"}}},
+		{"> Burn to white.", []Token{{"transition", "Burn to white."}}},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("Transition %s", test.input), func(t *testing.T) {
+			got := Tokenize(test.input)
+			testTokenMatch(t, got, test.wanted)
+		})
+	}
+}

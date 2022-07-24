@@ -98,6 +98,17 @@ func (l *Lexer) BuildTokens() []Token {
 			})
 			continue
 
+		case '>':
+			// Skip leading >
+			l.next()
+
+			value := l.collect()
+			tokens = append(tokens, Token{
+				kind:  "transition",
+				value: strings.TrimSpace(value),
+			})
+			continue
+
 		case '.':
 			if l.peek() != '.' {
 				value := l.collect()
@@ -123,18 +134,27 @@ func (l *Lexer) BuildTokens() []Token {
 		default:
 			value := l.collectText()
 			if isUpper(value) {
+				if strings.HasSuffix(value, "TO:") {
+					tokens = append(tokens, Token{
+						kind:  "transition",
+						value: value,
+					})
+					continue
+				}
+
 				tokens = append(tokens, Token{
 					kind: "character",
 					// TODO: Should probably always trim values for tokens
 					// other than text.
 					value: strings.TrimSpace(value),
 				})
-			} else {
-				tokens = append(tokens, Token{
-					kind:  "text",
-					value: value,
-				})
+				continue
 			}
+
+			tokens = append(tokens, Token{
+				kind:  "text",
+				value: value,
+			})
 			continue
 		}
 	}
