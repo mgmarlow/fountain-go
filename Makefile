@@ -7,7 +7,7 @@ run:
 	go run main.go
 
 test:
-	go test -v main.go
+	go test
 
 clean:
 	go clean
