@@ -2,14 +2,8 @@
 
 (WIP) [Fountain](https://fountain.io) processor.
 
-## Installation
-
-```
-todo
-```
-
-## Usage
-
-```
-todo
-```
+- [x] lexer
+- [ ] parser (in progress)
+- [ ] visitor
+- [ ] json output
+- [ ] html output
