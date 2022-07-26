@@ -97,7 +97,41 @@ func (l *Lexer) BuildTokens() []Token {
 					continue
 				}
 
+			case '=':
+				if l.matches("===") && !l.matches("====") {
+					value := l.collect()
+					tokens = append(tokens, Token{
+						kind:  "page_break",
+						value: value,
+					})
+					continue
+				}
+
+			case '#':
+				value := l.collect()
+				if strings.HasPrefix(value, "###") {
+					tokens = append(tokens, Token{
+						kind:  "h3",
+						value: strings.TrimSpace(value[3:]),
+					})
+					continue
+				}
+				if strings.HasPrefix(value, "##") {
+					tokens = append(tokens, Token{
+						kind:  "h2",
+						value: strings.TrimSpace(value[2:]),
+					})
+					continue
+				}
+				if strings.HasPrefix(value, "#") {
+					tokens = append(tokens, Token{
+						kind:  "h1",
+						value: strings.TrimSpace(value[1:]),
+					})
+					continue
+				}
 			}
+
 		}
 
 		switch l.char {
@@ -147,6 +181,16 @@ func (l *Lexer) BuildTokens() []Token {
 			continue
 
 		case '*':
+			if l.peek() == '/' {
+				l.next()
+				l.next()
+				tokens = append(tokens, Token{
+					kind:  "cboneyard",
+					value: "*/",
+				})
+				continue
+			}
+
 			l.next()
 			tokens = append(tokens, Token{
 				kind:  "asterisk",
@@ -159,6 +203,60 @@ func (l *Lexer) BuildTokens() []Token {
 			tokens = append(tokens, Token{
 				kind:  "underscore",
 				value: "_",
+			})
+			continue
+
+		case '[':
+			if l.peek() == '[' {
+				l.next()
+				l.next()
+				tokens = append(tokens, Token{
+					kind:  "onote",
+					value: "[[",
+				})
+				continue
+			}
+
+			l.next()
+			tokens = append(tokens, Token{
+				kind:  "obrace",
+				value: "[",
+			})
+			continue
+
+		case ']':
+			if l.peek() == ']' {
+				l.next()
+				l.next()
+				tokens = append(tokens, Token{
+					kind:  "cnote",
+					value: "]]",
+				})
+				continue
+			}
+
+			l.next()
+			tokens = append(tokens, Token{
+				kind:  "cbrace",
+				value: "]",
+			})
+			continue
+
+		case '/':
+			if l.peek() == '*' {
+				l.next()
+				l.next()
+				tokens = append(tokens, Token{
+					kind:  "oboneyard",
+					value: "/*",
+				})
+				continue
+			}
+
+			l.next()
+			tokens = append(tokens, Token{
+				kind:  "forward_slash",
+				value: "/",
 			})
 			continue
 		}
@@ -258,9 +356,11 @@ func isEOL(r rune) bool {
 // Expressions that can appear in normal text that we want to make sure get tokenized
 // into specific lexemes.
 //
-// Lexemes that check l.col == 0 cannot appear in this list.
+// Lexemes that check l.col == 0 cannot appear in this list. Items that appear in this
+// list MUST always result in a l.next() call, otherwise they will never be consumed
+// by the lexer.
 func isNestable(r rune) bool {
-	return r == '*' || r == '_' || r == '(' || r == ')' || r == '^'
+	return r == '*' || r == '_' || r == '(' || r == ')' || r == '^' || r == '[' || r == ']' || r == '/'
 }
 
 // Contains any numbers or letters. Useful for excluding punctuation lexemes.

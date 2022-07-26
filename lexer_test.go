@@ -194,3 +194,73 @@ func TestNesting(t *testing.T) {
 	got := Tokenize(input)
 	runTokenMatch(t, got, want)
 }
+
+func TestPageBreak(t *testing.T) {
+	tests := []test{
+		{"===", []Token{{"page_break", "==="}}},
+		{"==", []Token{{"text", "=="}}},
+		{"====", []Token{{"text", "===="}}},
+	}
+	runTestingTable(t, tests, "PageBreak %s")
+}
+
+func TestNotes(t *testing.T) {
+	tests := []test{
+		{"[[This section needs work.]]", []Token{
+			{"onote", "[["},
+			{"text", "This section needs work."},
+			{"cnote", "]]"},
+		}},
+		{"Foo[[bar]]", []Token{
+			{"text", "Foo"},
+			{"onote", "[["},
+			{"text", "bar"},
+			{"cnote", "]]"},
+		}},
+		{"Foo[bar]", []Token{
+			{"text", "Foo"},
+			{"obrace", "["},
+			{"text", "bar"},
+			{"cbrace", "]"},
+		}},
+	}
+	runTestingTable(t, tests, "Note %s")
+}
+
+func TestBoneyard(t *testing.T) {
+	tests := []test{
+		{"/*This section needs work.*/", []Token{
+			{"oboneyard", "/*"},
+			{"text", "This section needs work."},
+			{"cboneyard", "*/"},
+		}},
+		{"Foo/*bar*/", []Token{
+			{"text", "Foo"},
+			{"oboneyard", "/*"},
+			{"text", "bar"},
+			{"cboneyard", "*/"},
+		}},
+		{"Foo/bar/", []Token{
+			{"text", "Foo"},
+			{"forward_slash", "/"},
+			{"text", "bar"},
+			{"forward_slash", "/"},
+		}},
+	}
+	runTestingTable(t, tests, "Boneyard %s")
+}
+
+func TestSection(t *testing.T) {
+	tests := []test{
+		{"# Act", []Token{
+			{"h1", "Act"},
+		}},
+		{"## Sequence", []Token{
+			{"h2", "Sequence"},
+		}},
+		{"### Scene", []Token{
+			{"h3", "Scene"},
+		}},
+	}
+	runTestingTable(t, tests, "Section %s")
+}
