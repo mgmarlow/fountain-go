@@ -264,3 +264,85 @@ func TestSection(t *testing.T) {
 	}
 	runTestingTable(t, tests, "Section %s")
 }
+
+const fixture = `INT.  WILL'S BEDROOM - NIGHT (1973)
+
+WILL BLOOM, AGE 3, listens wide-eyed as his father EDWARD BLOOM, 40's and handsome, tells the story.  In every gesture, Edward is bigger than life, describing each detail with absolute conviction.
+
+EDWARD
+I didn't put any stock into such speculation or superstition.  All I knew was I'd been trying to catch that fish since I was a boy no bigger than you.
+(closer)
+And on the day you were born, that was the day I finally caught him.
+
+EXT.  CAMPFIRE - NIGHT (1977)
+
+A few years later, and Will sits with the other INDIAN GUIDES as Edward continues telling the story to the tribe.
+
+EDWARD (V.O)
+Now, I'd tried everything on it:  worms, lures, peanut butter, peanut butter-and-cheese.  But on that day I had a revelation:  if that fish was the ghost of a thief, the usual bait wasn't going to work.  I would have to use something he truly desired.
+
+Edward points to his wedding band, glinting in the firelight.
+
+LITTLE BRAVE
+(confused)
+Your finger?
+
+Edward slips his ring off.`
+
+func TestTokenizeFixture(t *testing.T) {
+	want := []Token{
+		{"scene_heading", "INT.  WILL'S BEDROOM - NIGHT (1973)"},
+		{"newline", ""},
+		{"newline", ""},
+		{"text", "WILL BLOOM, AGE 3, listens wide-eyed as his father EDWARD BLOOM, 40's and handsome, tells the story.  In every gesture, Edward is bigger than life, describing each detail with absolute conviction."},
+		{"newline", ""},
+		{"newline", ""},
+		{"character", "EDWARD"},
+		{"newline", ""},
+		{"text", "I didn't put any stock into such speculation or superstition.  All I knew was I'd been trying to catch that fish since I was a boy no bigger than you."},
+		{"newline", ""},
+		{"oparen", "("},
+		{"text", "closer"},
+		{"cparen", ")"},
+		{"newline", ""},
+		{"text", "And on the day you were born, that was the day I finally caught him."},
+		{"newline", ""},
+		{"newline", ""},
+		{"scene_heading", "EXT.  CAMPFIRE - NIGHT (1977)"},
+		{"newline", ""},
+		{"newline", ""},
+		{"text", "A few years later, and Will sits with the other INDIAN GUIDES as Edward continues telling the story to the tribe."},
+		{"newline", ""},
+		{"newline", ""},
+		{"character", "EDWARD"},
+		{"oparen", "("},
+		{"character", "V.O"}, // TODO: I wonder if we should allow nested expressions in characters
+		{"cparen", ")"},
+		{"newline", ""},
+		{"text", "Now, I'd tried everything on it:  worms, lures, peanut butter, peanut butter-and-cheese.  But on that day I had a revelation:  if that fish was the ghost of a thief, the usual bait wasn't going to work.  I would have to use something he truly desired."},
+		{"newline", ""},
+		{"newline", ""},
+		{"text", "Edward points to his wedding band, glinting in the firelight."},
+		{"newline", ""},
+		{"newline", ""},
+		{"character", "LITTLE BRAVE"},
+		{"newline", ""},
+		{"oparen", "("},
+		{"text", "confused"},
+		{"cparen", ")"},
+		{"newline", ""},
+		{"text", "Your finger?"},
+		{"newline", ""},
+		{"newline", ""},
+		{"text", "Edward slips his ring off."},
+	}
+
+	got := Tokenize(fixture)
+	runTokenMatch(t, got, want)
+}
+
+func BenchmarkTokenizer(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		Tokenize(fixture)
+	}
+}

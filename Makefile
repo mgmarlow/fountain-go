@@ -9,6 +9,9 @@ run:
 test:
 	go test
 
+benchmark:
+	go test -bench=.
+
 clean:
 	go clean
 	rm ${BINARY_NAME}
